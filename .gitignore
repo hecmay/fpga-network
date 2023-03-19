@@ -1,0 +1,10 @@
+# IP cache
+.ipcache
+
+# Build
+build_*
+_x
+xofiles
+
+# Logs
+*.log
