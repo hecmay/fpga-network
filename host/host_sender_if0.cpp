@@ -1,46 +1,24 @@
-/**********
-Copyright (c) 2019, Xilinx, Inc.
-All rights reserved.
 
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software
-without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**********/
-#include "xcl2.hpp"
 #include <vector>
 #include <chrono>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
+
+#include <iomanip>
 #include <iostream>
+
+#include "xcl2.hpp"
 #include "xclhal2.h"
 #include <CL/cl2.hpp>
 #include <CL/cl_ext_xilinx.h>
+
 #include <unistd.h>
 #include <uuid/uuid.h>
 #include <limits.h>
 #include <sys/stat.h>
+
 #include "CL/cl_ext_xilinx.h"
 #include "experimental/xclbin_util.h"
 
@@ -49,6 +27,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BYTES_PER_PACKET 1408
 #define MY_IP_ADDR 0xC0A80101
 #define THEIR_IP_ADDR 0xC0A80102
+
 #define IP_GATEWAY 0xC0A801FF
 #define ARP_DISCOVERY 0x1010
 #define ARP_IP_ADDR_OFFSET 0x1400
@@ -75,7 +54,7 @@ int main(int argc, char **argv) {
     	const char* xclbinFilename;
     	cl_int err;
     	if (argc < 2){
-		std::cout << "Usage: " << argv[0] << " <XCLBIN File> [<#Tx Pkt>] [<encrypt>] [<My IP>] [<Their IP>] [<IP Gateway>]" << std::endl;
+		std::cout << "Usage: " << argv[0] << " <XCLBIN File> [<#Tx Pkt>] [<My IP>] [<Their IP>] [<IP Gateway>]" << std::endl;
 		return EXIT_FAILURE;
 	}
 	else{
@@ -92,11 +71,13 @@ int main(int argc, char **argv) {
     	cl_program program;
     	cl_context context;
     	cl_command_queue q;
+
     	cl_int binaryStatus;
     	xclDeviceHandle handle;
     	xuid_t xclbinId;
     	cl_kernel nl;
     	cl_kernel cmac;
+
    	cl_kernel ul;
     	cl_uint nlidx;
     	cl_uint cmacidx;
@@ -104,25 +85,12 @@ int main(int argc, char **argv) {
     	unsigned int packet_size_total; 
     	uint32_t txPkt = 3200;
     	cl_mem buffer_packetdata;
-	unsigned int enc = 0;
 
     	if(argc >= 3){
 		txPkt = strtol(argv[2], NULL, 10);
 		packet_size_total = BYTES_PER_PACKET*txPkt; 
 	}
 
-	if (argc >=4){
-        	if (strcmp(argv[3],"encrypt")==0)
-		{
-			printf("encryption enabled...\n");
-			enc = 1;
-		}
-		else if (strcmp(argv[3],"no-encrypt")==0)
-		{
-			printf("encryption not enabled...\n");
-			enc = 0;
-		}
-	}
 
 
 	err = clGetPlatformIDs(0, NULL, &num_platforms); 
@@ -141,7 +109,11 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 		context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+
 	       	q = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, &err);
+
+			// q[1] = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, &err);
+
        		printf("Device count %d\n",deviceCount); 
        		int size=load_file_to_memory(xclbinFilename, (char **) &kernelBinary);
        		printf("xclbin size: %d\n",size);
@@ -253,7 +225,7 @@ int main(int argc, char **argv) {
   	clSetKernelArg(ul, 0,  sizeof(cl_mem), &buffer_packetdata);
    	clSetKernelArg(ul, 2,  sizeof(cl_uint), &pst); 
    	clSetKernelArg(ul, 3,  sizeof(cl_uint), &desti); 
-   	clSetKernelArg(ul, 4,  sizeof(cl_uint), &enc);
+
 	uint8_t *ptr_packetdata = (uint8_t*)clEnqueueMapBuffer(q, buffer_packetdata, CL_TRUE, CL_MAP_WRITE, 0, packet_size_bytes, 0, NULL, NULL, &err);
 	// Read text file
     	char *code = readFile("./alice29.txt");
@@ -263,8 +235,11 @@ int main(int argc, char **argv) {
     	const cl_mem mems[1] = {buffer_packetdata}; 
     	clEnqueueMigrateMemObjects(q, 1, mems, 0, 0, NULL, NULL);
     	printf("Enqueue user kernel...\n");
+
+		auto now = std::chrono::high_resolution_clock::now();
     	clEnqueueTask(q, ul, 0, NULL, NULL);
     	clFinish(q);
+
     	printf("Message of size %d transmitted.\n", packet_size_total);
     	printf("Message at the transmitter:\n");
 	
@@ -272,5 +247,14 @@ int main(int argc, char **argv) {
 		printf("%c",ptr_packetdata[i]);
 	} 
     	printf("\n"); 
+
+  auto time = std::chrono::system_clock::to_time_t(now);
+  auto tm = *std::gmtime(&time);
+
+  auto epoch = now.time_since_epoch();
+  auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count() % 1000000000;
+
+  std::cout << std::put_time(&tm, "%F %T.") << ns << std::put_time(&tm, " %Z\n");
+
        	return 0;	
 }

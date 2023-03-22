@@ -1,31 +1,3 @@
-/**********
-Copyright (c) 2019, Xilinx, Inc.
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software
-without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**********/
 #include "xcl2.hpp"
 #include <vector>
 #include <chrono>
@@ -34,7 +6,10 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
+
 #include "xclhal2.h"
+
 #include <CL/cl2.hpp>
 #include <CL/cl_ext_xilinx.h>
 #include <unistd.h>
@@ -49,15 +24,18 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BYTES_PER_PACKET 1408
 #define MY_IP_ADDR 0xC0A80102
 #define THEIR_IP_ADDR 0xC0A80101
+
 #define IP_GATEWAY 0xC0A801FF
 #define ARP_DISCOVERY 0x1010
 #define ARP_IP_ADDR_OFFSET 0x1400
 #define ARP_MAC_ADDR_OFFSET 0x1800
 #define ARP_VALID_OFFSET 0x1100
+
 #define IP_ADDR_OFFSET 0x0018
 #define IP_GATEWAY_OFFSET 0x001C
 #define MAC_ADDR_OFFSET 0x0010
 #define NUM_SOCKETS_HW 0x0A10
+
 #define UDP_TI_OFFSET 0x0810
 #define UDP_TP_OFFSET 0x0890
 #define UDP_MP_OFFSET 0x0910
@@ -83,6 +61,8 @@ int main(int argc, char **argv) {
 		std::cout <<"Using FPGA binary file specfied through the command line: " << xclbinFilename << std::endl;
 	}
 
+
+
     	// Load xclbin 
     	std::cout << "Loading: '" << xclbinFilename << "'\n";
     	cl_uint num_platforms;
@@ -90,6 +70,8 @@ int main(int argc, char **argv) {
     	cl_platform_id *platform_id;
     	cl_device_id device_id; 
     	cl_program program;
+
+
     	cl_context context;
     	cl_command_queue q;
     	cl_int binaryStatus;
@@ -104,26 +86,11 @@ int main(int argc, char **argv) {
     	unsigned int packet_size_total; 
     	uint32_t rxPkt = 3200;
     	cl_mem buffer_packetdata;
-	unsigned int dec = 0;
 
     	if(argc >= 3){
 		rxPkt = strtol(argv[2], NULL, 10);
 		packet_size_total = BYTES_PER_PACKET*rxPkt; 
 	}
-
-	if(argc >= 4)
-        {
-                if (strcmp(argv[3],"decrypt")==0)
-                {
-                        printf("decryption enabled...\n");
-                        dec = 1;
-                }
-		else if (strcmp(argv[3], "no-decrypt")==0)
-		{
-			printf("decryption not enabled...\n");
-			dec = 0;
-		}
-        }
 
 
     	err = clGetPlatformIDs(0, NULL, &num_platforms); 
@@ -252,17 +219,27 @@ int main(int argc, char **argv) {
     cl_uint pst = (cl_uint)packet_size_bytes; 
     clSetKernelArg(ul, 0,  sizeof(cl_mem), &buffer_packetdata);
     clSetKernelArg(ul, 2,  sizeof(cl_uint), &pst); 
-    clSetKernelArg(ul, 3,  sizeof(cl_uint), &dec);
+
     uint8_t *ptr_packetdata = (uint8_t *)clEnqueueMapBuffer(q, buffer_packetdata, CL_TRUE, CL_MAP_READ, 0, packet_size_bytes, 0, NULL, NULL, &err);
     const cl_mem mems[1] = {buffer_packetdata}; 
     printf("Enqueue user kernel...\n");
     clEnqueueTask(q, ul, 0, NULL, NULL); 
     clEnqueueMigrateMemObjects(q, 1, mems, CL_MIGRATE_MEM_OBJECT_HOST, 0, NULL, NULL);
     clFinish(q); 
+	auto now = std::chrono::high_resolution_clock::now();
+
     for (unsigned int i=0; i<packet_size_total; i++){
 	    printf("%c",ptr_packetdata[i]); 
     }
     printf("\n");
     printf("Message received.\n");
+
+  auto time = std::chrono::system_clock::to_time_t(now);
+  auto tm = *std::gmtime(&time);
+
+  auto epoch = now.time_since_epoch();
+  auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count() % 1000000000;
+
+  std::cout << std::put_time(&tm, "%F %T.") << ns << std::put_time(&tm, " %Z\n");
     return 0;	
 }

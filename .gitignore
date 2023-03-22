@@ -8,3 +8,4 @@ xofiles
 
 # Logs
 *.log
+*.tmp.ini

@@ -81,6 +81,7 @@ endif
 # Include application kernels depending on the design
 LIST_XO += $(USERKRNLDIR)xofiles/txkrnl.xo
 LIST_XO += $(USERKRNLDIR)xofiles/rxkrnl.xo
+LIST_XO += $(USERKRNLDIR)xofiles/proxykrnl.xo
 	
 # Linker params
 # Linker userPostSysLinkTcl param
