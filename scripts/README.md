@@ -2,7 +2,7 @@
 - Copy binary and bitstream to cloud server after compilation on build server
 
 ```bash
-export HEAD=156
+export HEAD=154
 export TAIL=157
 
 # SSH private key is handled by ssh-agent
@@ -24,9 +24,9 @@ xbutil reset -d 0000:3b:00.1
 # Set up environment on cloud nodes
 source /opt/xilinx/xrt/setup.sh
 
-# receiver (without decrypting) expecting 1 pkt on both CMAC/Rx
-./host_receiver_if3 demo_if3.xclbin 1 1 no-decrypt no-decrypt
+# receiver expecting 1 pkt on both CMAC/Rx
+./host_receiver_if3 demo_if3.xclbin 1 1
 
 # sender sending 1 pkt on each Tx/CAMC
-./host_sender_if3 demo_if3.xclbin 1 1 no-encrypt no-encrypt
+./host_sender_if3 demo_if3.xclbin 1 1
 ```

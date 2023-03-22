@@ -5,6 +5,7 @@
 build_*
 _x
 xofiles
+*.tmp.ini
 
 # Logs
 *.log
