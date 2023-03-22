@@ -358,27 +358,36 @@ int main(int argc, char **argv) {
   printf("Device 0: Message received.\n");
 
   // Device 1: User logic stuff
-  ul[1] = clCreateKernel(program, "rxkrnl:{rxkrnl_1}", &err);
+  ul[1] = clCreateKernel(program, "txkrnl:{txkrnl_1}", &err);
   auto packet_size_bytes_1 = sizeof(uint8_t) * packet_size_total_1;
-  buffer_packetdata1 = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
+  buffer_packetdata1 = clCreateBuffer(context, CL_MEM_READ_ONLY,
                                       packet_size_bytes_1, NULL, &err);
   cl_uint pst1 = (cl_uint)packet_size_bytes_1;
+  cl_uint desti1 = 0;
   clSetKernelArg(ul[1], 0, sizeof(cl_mem), &buffer_packetdata1);
   clSetKernelArg(ul[1], 2, sizeof(cl_uint), &pst1);
+  clSetKernelArg(ul[1], 3, sizeof(cl_uint), &desti1);
 
   uint8_t *ptr_packetdata1 = (uint8_t *)clEnqueueMapBuffer(
-      q[1], buffer_packetdata1, CL_TRUE, CL_MAP_READ, 0, packet_size_bytes_1, 0,
-      NULL, NULL, &err);
+      q[1], buffer_packetdata1, CL_TRUE, CL_MAP_WRITE, 0, packet_size_bytes_1,
+      0, NULL, NULL, &err);
+  // Read text file
+  char *code1 = readFile("./pg66489.txt");
+  for (unsigned int i = 0; i < packet_size_total_1; i++) {
+    ptr_packetdata1[i] = code1[i];
+  }
   const cl_mem mems1[1] = {buffer_packetdata1};
+  clEnqueueMigrateMemObjects(q[1], 1, mems1, 0, 0, NULL, NULL);
   printf("Enqueue user kernel 1...\n");
   clEnqueueTask(q[1], ul[1], 0, NULL, NULL);
-  clEnqueueMigrateMemObjects(q[1], 1, mems1, CL_MIGRATE_MEM_OBJECT_HOST, 0,
-                             NULL, NULL);
   clFinish(q[1]);
+  printf("Device 1: Message of size %d transmitted.\n", packet_size_total_1);
+  printf("Device 1: Message at the transmitter:\n");
+
   for (unsigned int i = 0; i < packet_size_total_1; i++) {
     printf("%c", ptr_packetdata1[i]);
   }
   printf("\n");
-  printf("Device 1: Message received.\n");
+  
   return 0;
 }

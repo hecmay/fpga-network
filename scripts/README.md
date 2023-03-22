@@ -30,3 +30,6 @@ source /opt/xilinx/xrt/setup.sh
 # sender sending 1 pkt on each Tx/CAMC
 ./host_sender_if3 demo_if3.xclbin 1 1
 ```
+
+## RTT
+- TIP: the NL/CMAC layer seems to cache one UDP transmission with payload of multiple UDP packets (as a quick fix to the deadlock issue). So if you send one pack of packets to CMAC0 before the CMAC0's user kernel receiver is started, the communication is still able to finish.
