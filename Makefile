@@ -81,7 +81,8 @@ endif
 # Include application kernels depending on the design
 LIST_XO += $(USERKRNLDIR)xofiles/txkrnl.xo
 LIST_XO += $(USERKRNLDIR)xofiles/rxkrnl.xo
-	
+LIST_XO += $(USERKRNLDIR)xofiles/proxy.xo
+
 # Linker params
 # Linker userPostSysLinkTcl param
 HLS_IP_FOLDER  = $(shell readlink -f ./$(NETLAYERDIR)synthesis_results_HBM)

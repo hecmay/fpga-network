@@ -15,7 +15,7 @@ help:
 
 
 DEVICE ?= xilinx_u280_xdma_201920_3
-kernel_list ?= txkrnl rxkrnl
+kernel_list ?= txkrnl rxkrnl proxy
 
 
 XSA := $(strip $(patsubst %.xpfm, % , $(shell basename $(DEVICE))))
@@ -42,6 +42,8 @@ $(TEMP_DIR)/txkrnl.xo: src/txkrnl.cpp
 $(TEMP_DIR)/rxkrnl.xo: src/rxkrnl.cpp
 	$(VPP) $(CLFLAGS) -k $(subst $(TEMP_DIR)/,,$(subst .xo,,$@)) -c -o $@ $^
 
+$(TEMP_DIR)/proxy.xo: src/proxy.cpp
+	$(VPP) $(CLFLAGS) -k $(subst $(TEMP_DIR)/,,$(subst .xo,,$@)) -c -o $@ $^
 
 check-devices:
 ifndef DEVICE

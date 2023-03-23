@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
   unsigned int packet_size_total_1;
   uint32_t rxPkt0 = 3200;
   uint32_t rxPkt1 = 3200;
-  cl_mem buffer_packetdata0;
-  cl_mem buffer_packetdata1;
+  // cl_mem buffer_packetdata0;
+  // cl_mem buffer_packetdata1;
 
   if (argc >= 4) {
     rxPkt0 = strtol(argv[2], NULL, 10);
@@ -334,60 +334,20 @@ int main(int argc, char **argv) {
   }
 
   // Device 0: User logic stuff
-  ul[0] = clCreateKernel(program, "rxkrnl:{rxkrnl_0}", &err);
+  ul[0] = clCreateKernel(program, "proxy:{proxy_0}", &err);
   auto packet_size_bytes_0 = sizeof(uint8_t) * packet_size_total_0;
-  buffer_packetdata0 = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
-                                      packet_size_bytes_0, NULL, &err);
-  cl_uint pst0 = (cl_uint)packet_size_bytes_0;
-  clSetKernelArg(ul[0], 0, sizeof(cl_mem), &buffer_packetdata0);
-  clSetKernelArg(ul[0], 2, sizeof(cl_uint), &pst0);
 
-  uint8_t *ptr_packetdata0 = (uint8_t *)clEnqueueMapBuffer(
-      q[0], buffer_packetdata0, CL_TRUE, CL_MAP_READ, 0, packet_size_bytes_0, 0,
-      NULL, NULL, &err);
-  const cl_mem mems0[1] = {buffer_packetdata0};
+  cl_uint pst0 = (cl_uint)packet_size_bytes_0;
+  cl_uint desti1 = 0;
+  clSetKernelArg(ul[0], 2, sizeof(cl_uint), &pst0);
+  clSetKernelArg(ul[0], 3, sizeof(cl_uint), &desti1);
+
   printf("Enqueue user kernel 0...\n");
   clEnqueueTask(q[0], ul[0], 0, NULL, NULL);
-  clEnqueueMigrateMemObjects(q[0], 1, mems0, CL_MIGRATE_MEM_OBJECT_HOST, 0,
-                             NULL, NULL);
+
   clFinish(q[0]);
-  for (unsigned int i = 0; i < packet_size_total_0; i++) {
-    printf("%c", ptr_packetdata0[i]);
-  }
   printf("\n");
-  printf("Device 0: Message received.\n");
-
-  // Device 1: User logic stuff
-  ul[1] = clCreateKernel(program, "txkrnl:{txkrnl_1}", &err);
-  auto packet_size_bytes_1 = sizeof(uint8_t) * packet_size_total_1;
-  buffer_packetdata1 = clCreateBuffer(context, CL_MEM_READ_ONLY,
-                                      packet_size_bytes_1, NULL, &err);
-  cl_uint pst1 = (cl_uint)packet_size_bytes_1;
-  cl_uint desti1 = 0;
-  clSetKernelArg(ul[1], 0, sizeof(cl_mem), &buffer_packetdata1);
-  clSetKernelArg(ul[1], 2, sizeof(cl_uint), &pst1);
-  clSetKernelArg(ul[1], 3, sizeof(cl_uint), &desti1);
-
-  uint8_t *ptr_packetdata1 = (uint8_t *)clEnqueueMapBuffer(
-      q[1], buffer_packetdata1, CL_TRUE, CL_MAP_WRITE, 0, packet_size_bytes_1,
-      0, NULL, NULL, &err);
-  // Read text file
-  char *code1 = readFile("./pg66489.txt");
-  for (unsigned int i = 0; i < packet_size_total_1; i++) {
-    ptr_packetdata1[i] = code1[i];
-  }
-  const cl_mem mems1[1] = {buffer_packetdata1};
-  clEnqueueMigrateMemObjects(q[1], 1, mems1, 0, 0, NULL, NULL);
-  printf("Enqueue user kernel 1...\n");
-  clEnqueueTask(q[1], ul[1], 0, NULL, NULL);
-  clFinish(q[1]);
-  printf("Device 1: Message of size %d transmitted.\n", packet_size_total_1);
-  printf("Device 1: Message at the transmitter:\n");
-
-  for (unsigned int i = 0; i < packet_size_total_1; i++) {
-    printf("%c", ptr_packetdata1[i]);
-  }
-  printf("\n");
+  printf("Device 0: Proxy done.\n");
   
   return 0;
 }
